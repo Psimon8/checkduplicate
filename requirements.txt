@@ -2,3 +2,5 @@ pandas
 trafilatura
 simhash
 argparse
+streamlit
+openpyxl
