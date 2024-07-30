@@ -6,6 +6,12 @@ from simhash import Simhash
 import streamlit as st
 from io import BytesIO
 
+st.set_page_config(
+    layout="wide",
+    page_title="Check Duplicate",
+    page_icon="🍄"
+)
+
 def fetch_content(url):
     downloaded = trafilatura.fetch_url(url)
     return trafilatura.extract(downloaded)
