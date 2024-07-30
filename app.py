@@ -53,32 +53,26 @@ def main(urls):
         urls_contents.append({'host': host, 'url': url, 'contenu': content})
 
     df = pd.DataFrame(urls_contents)
-    couples = []
+    pairs = []
 
     for (i, row1), (j, row2) in itertools.combinations(df.iterrows(), 2):
-        if row1['host'] != row2['host']:
-            couples.append({'source': row1['url'], 'target': row2['url']})
-
-    input_texts = [{'identifiant': row['url'], 'texte': row['contenu']} for index, row in df.iterrows()]
-    df_couples = pd.DataFrame(couples)
-    df_couples['simhash_distance'] = pd.Series(dtype=int)
-    df_couples['duplication_rate'] = pd.Series(dtype=float)
-    
-    df_texts = pd.DataFrame(input_texts)
-
-    for index, row in df_couples.iterrows():
-        source_url = row['source']
-        target_url = row['target']
+        source_url = row1['url']
+        target_url = row2['url']
+        source_text = row1['contenu']
+        target_text = row2['contenu']
         
-        source_text = df_texts[df_texts['identifiant'] == source_url]['texte'].iloc[0]
-        target_text = df_texts[df_texts['identifiant'] == target_url]['texte'].iloc[0]
-        
-        distance = text_similarity(source_text, target_text)
-        rate = duplication_rate(distance)
-        df_couples.at[index, 'simhash_distance'] = distance
-        df_couples.at[index, 'duplication_rate'] = rate
+        if source_text and target_text:
+            distance = text_similarity(source_text, target_text)
+            rate = duplication_rate(distance)
+            pairs.append({
+                'source': source_url,
+                'target': target_url,
+                'simhash_distance': distance,
+                'duplication_rate': rate
+            })
 
-    return urls_contents, df_couples, input_texts
+    df_pairs = pd.DataFrame(pairs)
+    return urls_contents, df_pairs
 
 st.title("URL Content Similarity Checker")
 st.write("Upload a CSV/XLSX file with URLs or paste URLs below:")
@@ -93,7 +87,7 @@ if st.button("Process"):
         urls = read_urls_from_text(url_text)
     
     if urls:
-        urls_contents, df_couples, input_texts = main(urls)
+        urls_contents, df_pairs = main(urls)
         st.success("Processing completed. Check the generated CSV and XLSX files.")
         
         # Show dataframes
@@ -101,15 +95,13 @@ if st.button("Process"):
         st.dataframe(pd.DataFrame(urls_contents))
         
         st.subheader("URL Pairs with Simhash Distance and Duplication Rate")
-        st.dataframe(df_couples)
+        st.dataframe(df_pairs)
         
         # Prepare files for download
         csv_urls = create_csv(urls_contents)
-        csv_couples = create_csv(df_couples)
-        excel_input_texts = create_excel(input_texts)
+        csv_pairs = create_csv(df_pairs)
         
         st.download_button("Download URL Contents CSV", csv_urls, "urls_categorisees.csv", "text/csv")
-        st.download_button("Download URL Pairs CSV", csv_couples, "couples.csv", "text/csv")
-        st.download_button("Download Input Texts Excel", excel_input_texts, "input-text.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        st.download_button("Download URL Pairs CSV", csv_pairs, "pairs.csv", "text/csv")
     else:
         st.error("Please provide URLs either by uploading a file or pasting URLs in the text area.")
