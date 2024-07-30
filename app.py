@@ -69,8 +69,8 @@ def main(urls):
         source_url = row['source']
         target_url = row['target']
         
-        source_text = df_texts[df_texts['identifiant'] == source_url]['texte'].iloc(0)
-        target_text = df_texts[df_texts['identifiant'] == target_url]['texte'].iloc(0)
+        source_text = df_texts[df_texts['identifiant'] == source_url]['texte'].iloc[0]
+        target_text = df_texts[df_texts['identifiant'] == target_url]['texte'].iloc[0]
         
         distance = text_similarity(source_text, target_text)
         df_couples.at[index, 'simhash_distance'] = distance
