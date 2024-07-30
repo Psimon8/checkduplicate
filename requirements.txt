@@ -4,3 +4,4 @@ simhash
 argparse
 streamlit
 openpyxl
+pip install streamlit pandas trafilatura simhash openpyxl
