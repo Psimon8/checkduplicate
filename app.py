@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 import itertools
 from simhash import Simhash
 import streamlit as st
-from io import StringIO
+from io import BytesIO
 
 def fetch_content(url):
     downloaded = trafilatura.fetch_url(url)
@@ -22,13 +22,16 @@ def read_urls_from_file(file):
         raise ValueError("Unsupported file format. Please upload a CSV or XLSX file.")
     return df['url'].tolist()
 
-def create_csv(data, filename):
+def create_csv(data):
     df = pd.DataFrame(data)
-    df.to_csv(filename, index=False)
+    return df.to_csv(index=False).encode('utf-8')
 
-def create_excel(data, filename):
+def create_excel(data):
     df = pd.DataFrame(data)
-    df.to_excel(filename, index=False)
+    output = BytesIO()
+    df.to_excel(output, index=False)
+    output.seek(0)
+    return output
 
 def get_features(text):
     return text.split()
@@ -46,8 +49,6 @@ def main(urls):
         host = urlparse(url).hostname
         urls_contents.append({'host': host, 'url': url, 'contenu': content})
 
-    create_csv(urls_contents, 'urls_categorisees.csv')
-
     df = pd.DataFrame(urls_contents)
     couples = []
 
@@ -55,11 +56,7 @@ def main(urls):
         if row1['host'] != row2['host']:
             couples.append({'source': row1['url'], 'target': row2['url']})
 
-    create_csv(couples, 'couples.csv')
-
     input_texts = [{'identifiant': row['url'], 'texte': row['contenu']} for index, row in df.iterrows()]
-    create_excel(input_texts, 'input-text.xlsx')
-
     df_couples = pd.DataFrame(couples)
     df_couples['simhash_distance'] = pd.Series(dtype=int)
     
@@ -75,7 +72,7 @@ def main(urls):
         distance = text_similarity(source_text, target_text)
         df_couples.at[index, 'simhash_distance'] = distance
 
-    df_couples.to_csv('couples.csv', index=False)
+    return urls_contents, df_couples, input_texts
 
 st.title("URL Content Similarity Checker")
 st.write("Upload a CSV/XLSX file with URLs or paste URLs below:")
@@ -90,10 +87,23 @@ if st.button("Process"):
         urls = read_urls_from_text(url_text)
     
     if urls:
-        main(urls)
+        urls_contents, df_couples, input_texts = main(urls)
         st.success("Processing completed. Check the generated CSV and XLSX files.")
-        st.download_button("Download URL Contents CSV", "urls_categorisees.csv")
-        st.download_button("Download URL Pairs CSV", "couples.csv")
-        st.download_button("Download Input Texts Excel", "input-text.xlsx")
+        
+        # Show dataframes
+        st.subheader("URL Contents")
+        st.dataframe(pd.DataFrame(urls_contents))
+        
+        st.subheader("URL Pairs with Simhash Distance")
+        st.dataframe(df_couples)
+        
+        # Prepare files for download
+        csv_urls = create_csv(urls_contents)
+        csv_couples = create_csv(df_couples)
+        excel_input_texts = create_excel(input_texts)
+        
+        st.download_button("Download URL Contents CSV", csv_urls, "urls_categorisees.csv", "text/csv")
+        st.download_button("Download URL Pairs CSV", csv_couples, "couples.csv", "text/csv")
+        st.download_button("Download Input Texts Excel", excel_input_texts, "input-text.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     else:
         st.error("Please provide URLs either by uploading a file or pasting URLs in the text area.")
