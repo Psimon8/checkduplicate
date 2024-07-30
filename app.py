@@ -41,6 +41,9 @@ def text_similarity(text1, text2):
     hash2 = Simhash(get_features(text2))
     return hash1.distance(hash2)
 
+def duplication_rate(distance, hash_bits=64):
+    return (1 - distance / hash_bits) * 100
+
 def main(urls):
     urls_contents = []
 
@@ -59,6 +62,7 @@ def main(urls):
     input_texts = [{'identifiant': row['url'], 'texte': row['contenu']} for index, row in df.iterrows()]
     df_couples = pd.DataFrame(couples)
     df_couples['simhash_distance'] = pd.Series(dtype=int)
+    df_couples['duplication_rate'] = pd.Series(dtype=float)
     
     df_texts = pd.DataFrame(input_texts)
 
@@ -70,7 +74,9 @@ def main(urls):
         target_text = df_texts[df_texts['identifiant'] == target_url]['texte'].iloc[0]
         
         distance = text_similarity(source_text, target_text)
+        rate = duplication_rate(distance)
         df_couples.at[index, 'simhash_distance'] = distance
+        df_couples.at[index, 'duplication_rate'] = rate
 
     return urls_contents, df_couples, input_texts
 
@@ -94,7 +100,7 @@ if st.button("Process"):
         st.subheader("URL Contents")
         st.dataframe(pd.DataFrame(urls_contents))
         
-        st.subheader("URL Pairs with Simhash Distance")
+        st.subheader("URL Pairs with Simhash Distance and Duplication Rate")
         st.dataframe(df_couples)
         
         # Prepare files for download
